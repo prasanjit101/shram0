@@ -1,54 +1,24 @@
 "use client";
-
-/**
- * @author: @kokonutui
- * @description: AI Voice
- * @version: 1.0.0
- * @date: 2025-06-26
- * @license: MIT
- * @website: https://kokonutui.com
- * @github: https://github.com/kokonut-labs/kokonutui
- */
-
 import { Mic } from "lucide-react";
-import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
-export default function AI_Voice() {
-    const [submitted, setSubmitted] = useState(false);
-    const [time, setTime] = useState(0);
-    const [isClient, setIsClient] = useState(false);
+type VoiceButtonProps = {
+    listening: boolean;
+    userSpeaking?: boolean;
+    disabled?: boolean;
+    isProcessing?: boolean;
+    statusLabel?: string;
+    onToggle?: () => void;
+};
 
-    useEffect(() => {
-        setIsClient(true);
-    }, []);
-
-    useEffect(() => {
-        let intervalId: NodeJS.Timeout;
-
-        if (submitted) {
-            intervalId = setInterval(() => {
-                setTime((t) => t + 1);
-            }, 1000);
-        } else {
-            setTime(0);
-        }
-
-        return () => clearInterval(intervalId);
-    }, [submitted]);
-
-    const formatTime = (seconds: number) => {
-        const mins = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${mins.toString().padStart(2, "0")}:${secs
-            .toString()
-            .padStart(2, "0")}`;
-    };
-
-
-    const handleClick = () => {
-        setSubmitted((prev) => !prev);
-    };
+export default function AI_Voice({
+    listening,
+    userSpeaking,
+    disabled,
+    isProcessing,
+    statusLabel,
+    onToggle,
+}: VoiceButtonProps) {
 
     return (
         <div className="w-full py-4">
@@ -56,14 +26,17 @@ export default function AI_Voice() {
                 <button
                     className={cn(
                         "group w-16 h-16 rounded-xl flex items-center justify-center transition-colors",
-                        submitted
+                        listening
                             ? "bg-none"
                             : "bg-none hover:bg-black/5 dark:hover:bg-white/5"
                     )}
                     type="button"
-                    onClick={handleClick}
+                    aria-pressed={listening}
+                    aria-label={statusLabel || "Toggle voice input"}
+                    disabled={disabled}
+                    onClick={() => onToggle?.()}
                 >
-                    {submitted ? (
+                    {listening ? (
                         <div
                             className="w-6 h-6 rounded-sm animate-spin bg-black  dark:bg-white cursor-pointer pointer-events-auto"
                             style={{ animationDuration: "3s" }}
@@ -73,41 +46,42 @@ export default function AI_Voice() {
                     )}
                 </button>
 
-                <span
-                    className={cn(
-                        "font-mono text-sm transition-opacity duration-300",
-                        submitted
-                            ? "text-black/70 dark:text-white/70"
-                            : "text-black/30 dark:text-white/30"
-                    )}
-                >
-                    {formatTime(time)}
-                </span>
-
                 <div className="h-4 w-64 flex items-center justify-center gap-0.5">
-                    {[...Array(48)].map((_, i) => (
-                        <div
-                            key={i}
-                            className={cn(
-                                "w-0.5 rounded-full transition-all duration-300",
-                                submitted
-                                    ? "bg-black/50 dark:bg-white/50 animate-pulse"
-                                    : "bg-black/10 dark:bg-white/10 h-1"
-                            )}
-                            style={
-                                submitted && isClient
-                                    ? {
-                                          height: `${20 + Math.random() * 80}%`,
-                                          animationDelay: `${i * 0.05}s`,
-                                      }
-                                    : undefined
-                            }
-                        />
-                    ))}
+                    {[...Array(48)].map((_, i) => {
+                        const heightPercent = 20 + ((i * 23) % 80);
+                        return (
+                            <div
+                                key={i}
+                                className={cn(
+                                    "w-0.5 rounded-full transition-all duration-300",
+                                    listening
+                                        ? cn(
+                                            "bg-black/50 dark:bg-white/50 animate-pulse",
+                                            userSpeaking && "scale-110 !bg-red-500/80"
+                                        )
+                                        : "bg-black/10 dark:bg-white/10 h-1"
+                                )}
+                                style={
+                                    listening
+                                        ? {
+                                            height: `${heightPercent}%`,
+                                            animationDelay: `${i * 0.05}s`,
+                                        }
+                                        : undefined
+                                }
+                            />
+                        );
+                    })}
                 </div>
 
                 <p className="h-4 text-xs text-black/70 dark:text-white/70">
-                    {submitted ? "Listening..." : "Click to speak"}
+                    {statusLabel
+                        ? statusLabel
+                        : listening
+                            ? isProcessing
+                                ? "Processing voice..."
+                                : "Listening..."
+                            : "Click to speak"}
                 </p>
             </div>
         </div>
