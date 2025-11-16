@@ -1,0 +1,67 @@
+"use client"
+
+import * as React from "react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Task } from "@/lib/db/schema"
+
+interface TasksTableProps {
+  tasks: Task[]
+}
+
+export function TasksTable({ tasks }: TasksTableProps) {
+  return (
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[50px]">Priority</TableHead>
+            <TableHead>Title</TableHead>
+            <TableHead className="w-[200px]">Scheduled Time</TableHead>
+            <TableHead className="w-[150px]">Created At</TableHead>
+            <TableHead className="w-[150px]">Updated At</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tasks.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} className="h-24 text-center">
+                No tasks found.
+              </TableCell>
+            </TableRow>
+          ) : (
+            tasks.map((task) => (
+              <TableRow key={task.id}>
+                <TableCell className="font-medium">
+                  {task.priorityIndex ?? 0}
+                </TableCell>
+                <TableCell>{task.title}</TableCell>
+                <TableCell>
+                  {task.scheduledTime
+                    ? new Date(task.scheduledTime).toLocaleString()
+                    : "-"}
+                </TableCell>
+                <TableCell>
+                  {task.createdAt
+                    ? new Date(task.createdAt).toLocaleString()
+                    : "-"}
+                </TableCell>
+                <TableCell>
+                  {task.updatedAt
+                    ? new Date(task.updatedAt).toLocaleString()
+                    : "-"}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
