@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { customType } from "drizzle-orm/sqlite-core";
 
 // Custom type for handling Float32Array as a vector in the database
-// For future implementation of semantic search feature
 export const float32Array = customType<{
   data: number[];
   config: { dimensions: number };

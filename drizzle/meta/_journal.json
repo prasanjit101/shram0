@@ -8,6 +8,13 @@
       "when": 1763285913343,
       "tag": "0000_gray_namor",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1763290565418,
+      "tag": "0001_soft_hairball",
+      "breakpoints": true
     }
   ]
 }

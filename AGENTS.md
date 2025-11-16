@@ -84,6 +84,7 @@ Make a voice-first to-do list web-app that uses a user’s voice commands to pro
 
 * Task:
   * title
+  * title Embedding (Title's vector for semantic search)
   * scheduled time
   * priority index
   * created_at

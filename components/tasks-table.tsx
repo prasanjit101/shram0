@@ -25,7 +25,6 @@ export function TasksTable({ tasks }: TasksTableProps) {
             <TableHead>Title</TableHead>
             <TableHead className="w-[200px]">Scheduled Time</TableHead>
             <TableHead className="w-[150px]">Created At</TableHead>
-            <TableHead className="w-[150px]">Updated At</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -50,11 +49,6 @@ export function TasksTable({ tasks }: TasksTableProps) {
                 <TableCell>
                   {task.createdAt
                     ? new Date(task.createdAt).toLocaleString()
-                    : "-"}
-                </TableCell>
-                <TableCell>
-                  {task.updatedAt
-                    ? new Date(task.updatedAt).toLocaleString()
                     : "-"}
                 </TableCell>
               </TableRow>

@@ -17,3 +17,10 @@ const client = createClient({
  * Use this to interact with the database
  */
 export const db = drizzle(client, { schema });
+
+
+await db.run(sql`
+  CREATE INDEX IF NOT EXISTS vector_index
+  ON tasks(title_embedding)
+  USING vector_cosine(768)
+`);

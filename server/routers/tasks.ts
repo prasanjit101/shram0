@@ -8,7 +8,7 @@ export const tasksRouter = router({
   // Get all tasks
   getAll: publicProcedure
     .query(async () => {
-      return await db.select().from(tasks).orderBy(desc(tasks.createdAt));
+      return await db.select().from(tasks).orderBy(desc(tasks.priorityIndex));
     }),
 
   // Get task by ID
