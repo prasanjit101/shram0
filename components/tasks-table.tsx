@@ -30,7 +30,7 @@ export function TasksTable() {
           {tasks.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} className="h-24 text-center">
-                No tasks found.
+                {isLoading ? "Loading tasks..." : "No tasks found."}
               </TableCell>
             </TableRow>
           ) : (
@@ -50,7 +50,6 @@ export function TasksTable() {
           )}
         </TableBody>
       </Table>
-      <p className="text-sm"> {isLoading ? "Loading tasks..." : ""} </p>
     </div>
   )
 }
