@@ -3,25 +3,31 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 
 import { trpc } from '@/components/trpc-provider';
-import type { Task } from '@/lib/db/schema';
+import type { Task, TaskClient } from '@/lib/db/schema';
+import { toast } from 'sonner';
+
+
 
 type TasksStoreState = {
-  tasks: Task[];
+  tasks: TaskClient[];
   isHydrated: boolean;
+  isLoading: boolean;
   lastFetchedAt?: number;
 };
 
 type TasksStoreActions = {
-  setTasks: (tasks: Task[]) => void;
-  addTask: (task: Task) => void;
-  updateTask: (task: Task) => void;
+  setTasks: (tasks: TaskClient[]) => void;
+  addTask: (task: TaskClient) => void;
+  updateTask: (task: TaskClient) => void;
   removeTask: (id: number) => void;
   reset: () => void;
+  setLoading: (isLoading: boolean) => void;
 };
 
 export const useTasksStore = create<TasksStoreState & TasksStoreActions>((set) => ({
   tasks: [],
   isHydrated: false,
+  isLoading: false,
   lastFetchedAt: undefined,
   setTasks: (tasks) =>
     set({
@@ -46,10 +52,11 @@ export const useTasksStore = create<TasksStoreState & TasksStoreActions>((set) =
   removeTask: (id) =>
     set((state) => ({
       tasks: state.tasks.filter((task) => task.id !== id),
-      isHydrated: state.isHydrated,
-      lastFetchedAt: state.lastFetchedAt,
+      isHydrated: true,
+      lastFetchedAt: Date.now(),
     })),
   reset: () => set({ tasks: [], isHydrated: false, lastFetchedAt: undefined }),
+  setLoading: (isLoading) => set({ isLoading }),
 }));
 
 export const useTasksStoreActions = () =>
@@ -60,71 +67,78 @@ export const useTasksStoreActions = () =>
       updateTask: state.updateTask,
       removeTask: state.removeTask,
       reset: state.reset,
+      setLoading: state.setLoading,
     }))
   );
 
 // Task hooks using tRPC backed by the Zustand store
 export const useTasks = {
   // Get all tasks
-  useGetAll: () => {
-    const { setTasks } = useTasksStoreActions();
-    const query = trpc.tasks.getAll.useQuery();
+  useGetAll: (queryStr?: string) => {
+    const { setTasks, setLoading } = useTasksStoreActions();
+    const query = trpc.tasks.getAll.useQuery({ query: queryStr || undefined }, {
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+    });
 
     useEffect(() => {
+      setLoading(query.isLoading);
       if (query.data) {
         setTasks(query.data);
+        toast.success('Tasks list fetched.');
       }
-    }, [query.data, setTasks]);
-
-    return query;
-  },
-
-  // Get task by ID
-  useGetById: (id: number) => {
-    const { updateTask } = useTasksStoreActions();
-    const query = trpc.tasks.getById.useQuery({ id }, { enabled: Boolean(id) });
-
-    useEffect(() => {
-      if (query.data) {
-        updateTask(query.data);
-      }
-    }, [query.data, updateTask]);
+    }, [query.data, query.isLoading, setTasks, setLoading]);
 
     return query;
   },
 
   // Create task mutation
   useCreate: () => {
-    const { addTask } = useTasksStoreActions();
+    const { addTask, setLoading } = useTasksStoreActions();
+    setLoading(true);
     return trpc.tasks.create.useMutation({
       onSuccess: (task) => {
         if (task) {
           addTask(task);
+          toast.success(`Task "${task.title}" created.`);
         }
+      },
+      onSettled: () => {
+        setLoading(false);
       },
     });
   },
 
   // Update task mutation
   useUpdate: () => {
-    const { updateTask } = useTasksStoreActions();
+    const { updateTask, setLoading } = useTasksStoreActions();
+    setLoading(true);
     return trpc.tasks.update.useMutation({
       onSuccess: (task) => {
         if (task) {
           updateTask(task);
+          toast.success(`Task "${task.title}" updated.`);
         }
+      },
+      onSettled: () => {
+        setLoading(false);
       },
     });
   },
 
   // Delete task mutation
   useDelete: () => {
-    const { removeTask } = useTasksStoreActions();
+    const { removeTask, setLoading } = useTasksStoreActions();
+    setLoading(true);
     return trpc.tasks.delete.useMutation({
       onSuccess: (_result, variables) => {
         if (variables?.id) {
           removeTask(variables.id);
+          toast.success(`Task deleted successfully.`);
         }
+      },
+      onSettled: () => {
+        setLoading(false);
       },
     });
   },
@@ -143,7 +157,7 @@ export const useTasksUtils = () => {
   };
 
   const refetchTasks = async () => {
-    const tasks = await utils.tasks.getAll.fetch();
+    const tasks = await utils.tasks.getAll.fetch({});
     if (tasks) {
       setTasks(tasks);
     } else {
@@ -152,9 +166,15 @@ export const useTasksUtils = () => {
     return tasks;
   };
 
+  const invalidateTasks = () => {
+    utils.tasks.getAll.invalidate();
+    utils.tasks.getById.invalidate();
+  };
+
   return {
     ...utils,
     hydrateFromCache,
     refetchTasks,
+    invalidateTasks,
   };
 };

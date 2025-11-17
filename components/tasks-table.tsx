@@ -9,13 +9,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Task } from "@/lib/db/schema"
+import { useTasksStore, useTasks } from "@/lib/tasks-utils";
 
-interface TasksTableProps {
-  tasks: Task[]
-}
 
-export function TasksTable({ tasks }: TasksTableProps) {
+export function TasksTable() {
+  const { tasks, isLoading } = useTasksStore();
+  useTasks.useGetAll();
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -23,7 +23,7 @@ export function TasksTable({ tasks }: TasksTableProps) {
           <TableRow>
             <TableHead>Title</TableHead>
             <TableHead className="w-[200px]">Scheduled Time</TableHead>
-            <TableHead className="w-[150px]">Created At</TableHead>
+            <TableHead className="w-[150px]">Completed</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -43,15 +43,14 @@ export function TasksTable({ tasks }: TasksTableProps) {
                     : "-"}
                 </TableCell>
                 <TableCell>
-                  {task.createdAt
-                    ? new Date(task.createdAt).toLocaleString()
-                    : "-"}
+                  {task.completed ? "Yes" : "No"}
                 </TableCell>
               </TableRow>
             ))
           )}
         </TableBody>
       </Table>
+      <p className="text-sm"> {isLoading ? "Loading tasks..." : ""} </p>
     </div>
   )
 }

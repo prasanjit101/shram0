@@ -19,13 +19,22 @@ export const tasksRouter = router({
           title: tasks.title,
           scheduledTime: tasks.scheduledTime,
           completed: tasks.completed,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
         }).from(tasks).where(
           sql`vector_top_k('vector_index', vector32(${JSON.stringify(queryVector)}), 10)`,
         );
 
         return topK;
       }
-      return await db.select().from(tasks).orderBy(desc(tasks.id));
+      return await db.select({
+        id: tasks.id,
+        title: tasks.title,
+        scheduledTime: tasks.scheduledTime,
+        completed: tasks.completed,
+        createdAt: tasks.createdAt,
+        updatedAt: tasks.updatedAt,
+      }).from(tasks).orderBy(desc(tasks.id));
     }),
 
   // Get task by ID
@@ -76,7 +85,14 @@ export const tasksRouter = router({
           completed: input.completed !== undefined ? (input.completed ? 1 : 0) : undefined,
         })
         .where(eq(tasks.id, input.id))
-        .returning();
+        .returning({
+          id: tasks.id,
+          title: tasks.title,
+          scheduledTime: tasks.scheduledTime,
+          completed: tasks.completed,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+        });
       return updatedTask;
     }),
 

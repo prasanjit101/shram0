@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { Loader } from "@/components/ai-elements/loader";
-import { DefaultChatTransport, UIMessage } from "ai";
+import { DefaultChatTransport, getToolName, isToolUIPart, UIMessage } from "ai";
 import {
     useActionState,
     useEffect,
@@ -15,6 +15,8 @@ import { usePlayer } from "@/lib/hooks/use-player";
 import { useMicVAD, utils } from "@ricky0123/vad-react";
 import { ResponseUIMessage } from "@/types/ai";
 import { Conversation, ConversationContent } from "./ai-elements/conversation";
+import { useTasksUtils, useTasksStoreActions, useTasks, useTasksStore } from "@/lib/tasks-utils";
+import { TaskClient } from "@/lib/db/schema";
 
 export default function VoicePanel() {
     const [micPermission, setMicPermission] = useState<"prompt" | "granted" | "denied">("prompt");
@@ -75,6 +77,9 @@ export default function VoicePanel() {
         }
     };
 
+    const { tasks } = useTasksStore();
+
+
     const vad = useMicVAD({
         startOnLoad: false,
         onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
@@ -88,11 +93,19 @@ export default function VoicePanel() {
             if (isFirefox) vad.pause();
         },
         positiveSpeechThreshold: 0.6,
-        redemptionMs: 500,
-        minSpeechMs: 500,
     });
 
-    const { messages, sendMessage, setMessages, } = useChat<ResponseUIMessage>({
+    const { invalidateTasks, } = useTasksUtils();
+    const { useGetAll } = useTasks;
+
+    // Local state to hold the current query for listing tasks via tool calls
+    const [listQuery, setListQuery] = useState<string | undefined>(undefined);
+
+    // Run the useGetAll hook reactively when listQuery changes. This respects
+    // the Rules of Hooks while still letting us trigger a fetch from onToolCall.
+    useGetAll(listQuery);
+
+    const { messages, sendMessage, setMessages, status, addToolOutput } = useChat<ResponseUIMessage>({
         transport: new DefaultChatTransport({
             api: "/api/ai",
         }),
@@ -108,22 +121,35 @@ export default function VoicePanel() {
                 ]);
             }
         },
+        onToolCall: async ({ toolCall }) => {
+            if (toolCall.toolName === "listTask") {
+                let query = (toolCall.input as any).query as string | undefined;
+                console.log("Calling Tool for listTask with query:", query);
+                // Trigger a reactive fetch by updating the query state
+                setListQuery(query);
+            } else {
+                console.log("Invalidating tasks for tool:", toolCall.toolName);
+                // delay to ensure the action is completed before invalidating
+                setTimeout(() => {
+                    invalidateTasks();
+                }, 1500);
+            }
+            console.log({ toolCall });
+        }
     });
 
-    useEffect(() => {
-        console.log("Messages updated:", messages);
-    }, [messages]);
-
-    const [, submit, isPending] = useActionState<
-        Array<UIMessage>,
-        string | Blob
-        >(async (_prevMessages, data) => {
-        let requestBody;
+    // Submits either text or audio (Blob) to the chat API
+    async function submit(data: string | Blob) {
+        let requestBody: {
+            input?: string;
+            audioBase64?: string;
+            tasks?: TaskClient[];
+        };
 
         if (typeof data === "string") {
             requestBody = { input: data };
         } else {
-            // Convert blob to base64 - safe approach to avoid call stack overflow
+            // Convert blob to base64 for safe transmission
             const arrayBuffer = await data.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
             let binaryString = '';
@@ -133,13 +159,12 @@ export default function VoicePanel() {
             const base64 = btoa(binaryString);
             requestBody = { audioBase64: base64 };
         }
+        requestBody['tasks'] = tasks;
 
         await sendMessage(undefined, {
             body: requestBody,
         });
-
-        return [];
-    }, []);
+    }
 
     // Function to handle microphone permission request and toggle VAD
     const handleToggleVAD = async () => {
@@ -156,6 +181,7 @@ export default function VoicePanel() {
             }
         }
     };
+
 
     return (
         <div className="flex flex-col h-full p-4">
@@ -175,12 +201,13 @@ export default function VoicePanel() {
                     <ConversationContent>
                         {
                             messages.map((message) => {
-                                const parts = message.role === 'assistant' ? [message.parts.findLast(part => part.type === 'text')] : message.parts;
                                 // some kind of bug in ai-sdk causing duplicate messages, so filtering them out
+                                const parts = message.role === 'assistant' ? [message.parts.findLast(part => part.type === 'text')] : message.parts;
                                 return (
                                     <Message from={message.role} key={message.id}>
                                         <MessageContent>
                                             {parts.map((part, i) => {
+                                                if (!part) return null;
                                                 switch (part?.type) {
                                                     case 'text':
                                                         return (
@@ -188,8 +215,6 @@ export default function VoicePanel() {
                                                                 {part.text}
                                                             </MessageResponse>
                                                         );
-                                                    default:
-                                                        return null;
                                                 }
                                             })}
                                         </MessageContent>
@@ -204,7 +229,7 @@ export default function VoicePanel() {
             <AI_Voice
                 listening={vad.listening}
                 disabled={!!vad.errored || micPermission === 'denied'}
-                isProcessing={isPending}
+                isProcessing={status === "streaming"}
                 userSpeaking={vad.userSpeaking}
                 onToggle={handleToggleVAD}
             />

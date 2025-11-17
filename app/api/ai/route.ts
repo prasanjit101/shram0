@@ -1,19 +1,24 @@
-import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, streamText, experimental_transcribe as transcribe, UIMessage } from 'ai';
-import { groq } from '@ai-sdk/groq';
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs, streamText, experimental_transcribe as transcribe, UIMessage } from 'ai';
 import { NextResponse } from "next/server";
 import { ResponseUIMessage } from '@/types/ai';
-import { todoAgent } from '@/server/ai/agent';
+import { Experimental_Agent as Agent, tool } from 'ai';
+import { z } from 'zod';
+import { groq } from '@ai-sdk/groq';
+import { taskTools } from '@/server/ai/tools';
+import { todoSystemPrompt } from '@/server/ai/prompt';
+import { TaskClient } from '@/lib/db/schema';
 
 type RequestBody = {
   audioBase64: string;
   messages?: UIMessage[];
+  tasks?: TaskClient[];
 };
 
 export async function POST(request: Request) {
   try {
 
     const body = await request.json() as RequestBody;
-    const { audioBase64, messages } = body;
+    const { audioBase64, messages, tasks } = body;
 
     if (!audioBase64) {
       return NextResponse.json(
@@ -33,7 +38,7 @@ export async function POST(request: Request) {
         const { text: transcript } = await transcribe({
           model: groq.transcription('whisper-large-v3-turbo'),
           audio: audioBuffer,
-          providerOptions: { groq: { language: 'en' } },
+          providerOptions: { groq: { language: 'en', prompt: 'Transcribe english audio to text accurately.' } },
         });
 
         writer.write({
@@ -52,6 +57,15 @@ export async function POST(request: Request) {
             role: 'user',
             parts: [{ type: 'text', text: transcript }]
           }]);
+
+        const todoAgent = new Agent({
+          model: groq('openai/gpt-oss-120b'),
+          tools: taskTools,
+          stopWhen: stepCountIs(6),
+          system: todoSystemPrompt(tasks),
+          temperature: 0.2,
+          maxRetries: 3,
+        });
 
         // Generate AI response based on the transcript
         const result = todoAgent.stream({

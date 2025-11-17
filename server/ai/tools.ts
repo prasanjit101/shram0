@@ -16,7 +16,7 @@ const normalizeDateTimeInput = (value?: string | null) => {
     return parsed.toISOString();
 };
 
-const buildTaskXml = (tasks: Task[]) => {
+export const buildTaskXml = (tasks: Task[]) => {
     if (tasks.length === 0) {
         return "<tasks />";
     }
@@ -38,11 +38,11 @@ const buildTaskXml = (tasks: Task[]) => {
 
 
 
-export const todoTools = {
-    create: tool({
-        description: "Create a new to-do item",
+export const taskTools = {
+    createTask: tool({
+        description: "Create a new task item",
         inputSchema: z.object({
-            title: z.string().min(1).describe("The title of the to-do item"),
+            title: z.string().min(1).describe("The title of the task item"),
             scheduledTime: z
                 .string()
                 .optional()
@@ -62,18 +62,21 @@ export const todoTools = {
             ].join("\n");
         },
     }),
-    list: tool({
-        description: "List to-do items",
+    listTask: tool({
+        description: "List task items",
         inputSchema: z.object({
             query: z.string().optional().describe("Free-text filter such as 'administrative'"),
         }),
+        execute: async ({ query }) => {
+            return "Tasks list based on the query has been requested. It should be reflected in the UI shortly.";
+        }
     }),
-    update: tool({
-        description: "Update a to-do item",
+    updateTask: tool({
+        description: "Update a task item",
         inputSchema: z
             .object({
-                id: z.number().describe("The ID of the to-do item"),
-                title: z.string().optional().describe("The new title of the to-do item"),
+                id: z.number().describe("The ID of the task item"),
+                title: z.string().optional().describe("The new title of the task item"),
                 scheduledTime: z
                     .string()
                     .optional()
@@ -85,7 +88,7 @@ export const todoTools = {
             }),
         execute: async ({ id, title, scheduledTime, completed }) => {
             const normalizedTime = normalizeDateTimeInput(scheduledTime);
-            const updatedTask = await api.tasks.update({
+            await api.tasks.update({
                 id,
                 title: title?.trim(),
                 scheduledTime: normalizedTime,
@@ -95,10 +98,10 @@ export const todoTools = {
             return "The to-do item has been UPDATED successfully.";
         },
     }),
-    delete: tool({
-        description: "Call this tool to delete a to-do item by its ID",
+    deleteTask: tool({
+        description: "Call this tool to delete a task item by its ID",
         inputSchema: z.object({
-            id: z.number().int().describe("The ID of the to-do item"),
+            id: z.number().int().describe("The ID of the task item"),
         }),
         execute: async ({ id }) => {
             await api.tasks.delete({ id });

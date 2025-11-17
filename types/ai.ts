@@ -10,6 +10,10 @@ export type ResponseUIMessage = UIMessage<
     customMessage: {
       role: 'user' | 'assistant' | 'system';
       text: string;
+    };
+    toolCall: {
+      toolName: string;
+      callInClient: boolean;
     }
   }
 >;
