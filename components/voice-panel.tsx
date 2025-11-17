@@ -185,7 +185,7 @@ export default function VoicePanel() {
 
     return (
         <div className="flex flex-col h-full p-4">
-            <div className="h-[70vh] overflow-y-auto flex-col gap-4">
+            <div className="h-[65vh] overflow-y-auto flex-col gap-4">
                 {/* Microphone permission status */}
                 {micPermission === 'denied' && (
                     <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
@@ -233,6 +233,7 @@ export default function VoicePanel() {
                 userSpeaking={vad.userSpeaking}
                 onToggle={handleToggleVAD}
             />
+            <p className="text-xs text-center mx-auto text-muted-foreground max-w-xs">Click the mic and speak. Speech is auto-detected and processed. Turning it off stops the detection.</p>
             <p className="text-destructive">{vad.errored}</p>
         </div>
     );
