@@ -2,19 +2,36 @@ import { z } from 'zod';
 import { publicProcedure, router } from '@/lib/trpc';
 import { db } from '@/lib/db';
 import { tasks } from '@/lib/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, sql } from 'drizzle-orm';
+import { getTextEmbedding } from '../ai/embedding';
 
 export const tasksRouter = router({
   // Get all tasks
   getAll: publicProcedure
-    .query(async () => {
-      return await db.select().from(tasks).orderBy(desc(tasks.priorityIndex));
+    .input(z.object({
+      query: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      if (input.query) {
+        const queryVector = await getTextEmbedding(input.query);
+        const topK = await db.select({
+          id: tasks.id,
+          title: tasks.title,
+          scheduledTime: tasks.scheduledTime,
+          completed: tasks.completed,
+        }).from(tasks).where(
+          sql`vector_top_k('vector_index', vector32(${JSON.stringify(queryVector)}), 10)`,
+        );
+
+        return topK;
+      }
+      return await db.select().from(tasks).orderBy(desc(tasks.id));
     }),
 
   // Get task by ID
   getById: publicProcedure
     .input(z.object({
-      id: z.string(),
+      id: z.number(),
     }))
     .query(async ({ input }) => {
       const [task] = await db.select().from(tasks).where(eq(tasks.id, input.id));
@@ -27,14 +44,14 @@ export const tasksRouter = router({
       z.object({
         title: z.string().min(1),
         scheduledTime: z.string().optional(),
-        priorityIndex: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
+      const titleVector = await getTextEmbedding(input.title);
       const [newTask] = await db.insert(tasks).values({
         title: input.title,
         scheduledTime: input.scheduledTime,
-        priorityIndex: input.priorityIndex ?? 0,
+        titleEmbedding: sql`vector32(${JSON.stringify(titleVector)})`
       }).returning();
       return newTask;
     }),
@@ -43,10 +60,10 @@ export const tasksRouter = router({
   update: publicProcedure
     .input(
       z.object({
-        id: z.string(),
+        id: z.number(),
         title: z.string().optional(),
         scheduledTime: z.string().optional(),
-        priorityIndex: z.number().optional(),
+        completed: z.boolean().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -55,8 +72,8 @@ export const tasksRouter = router({
         .set({
           title: input.title,
           scheduledTime: input.scheduledTime,
-          priorityIndex: input.priorityIndex,
           updatedAt: new Date().toISOString(),
+          completed: input.completed !== undefined ? (input.completed ? 1 : 0) : undefined,
         })
         .where(eq(tasks.id, input.id))
         .returning();
@@ -67,7 +84,7 @@ export const tasksRouter = router({
   delete: publicProcedure
     .input(
       z.object({
-        id: z.string(),
+        id: z.number(),
       })
     )
     .mutation(async ({ input }) => {

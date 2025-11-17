@@ -15,7 +15,7 @@ type TasksStoreActions = {
   setTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
-  removeTask: (id: string) => void;
+  removeTask: (id: number) => void;
   reset: () => void;
 };
 
@@ -80,7 +80,7 @@ export const useTasks = {
   },
 
   // Get task by ID
-  useGetById: (id: string) => {
+  useGetById: (id: number) => {
     const { updateTask } = useTasksStoreActions();
     const query = trpc.tasks.getById.useQuery({ id }, { enabled: Boolean(id) });
 

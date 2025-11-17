@@ -88,6 +88,7 @@ export default function VoicePanel() {
             if (isFirefox) vad.pause();
         },
         positiveSpeechThreshold: 0.6,
+        redemptionMs: 500,
         minSpeechMs: 500,
     });
 

@@ -21,7 +21,6 @@ export function TasksTable({ tasks }: TasksTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px]">Priority</TableHead>
             <TableHead>Title</TableHead>
             <TableHead className="w-[200px]">Scheduled Time</TableHead>
             <TableHead className="w-[150px]">Created At</TableHead>
@@ -37,9 +36,6 @@ export function TasksTable({ tasks }: TasksTableProps) {
           ) : (
             tasks.map((task) => (
               <TableRow key={task.id}>
-                <TableCell className="font-medium">
-                  {task.priorityIndex ?? 0}
-                </TableCell>
                 <TableCell>{task.title}</TableCell>
                 <TableCell>
                   {task.scheduledTime

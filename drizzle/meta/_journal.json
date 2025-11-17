@@ -15,6 +15,13 @@
       "when": 1763290565418,
       "tag": "0001_soft_hairball",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1763330173266,
+      "tag": "0002_many_justin_hammer",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { convertToModelMessages, createUIMessageStream, createUIMessageStreamRes
 import { groq } from '@ai-sdk/groq';
 import { NextResponse } from "next/server";
 import { ResponseUIMessage } from '@/types/ai';
+import { todoAgent } from '@/server/ai/agent';
 
 type RequestBody = {
   audioBase64: string;
@@ -46,16 +47,14 @@ export async function POST(request: Request) {
 
         const conversationHistory = convertToModelMessages([
           // pick only last 1 message from the history, for better results summarizing or compressing the context would be more helpful.
-          ...((messages || []).slice(-1)),
+          ...(messages || []).slice(-1),
           {
             role: 'user',
             parts: [{ type: 'text', text: transcript }]
           }]);
 
         // Generate AI response based on the transcript
-        const result = streamText({
-          model: groq('openai/gpt-oss-120b'),
-          system: 'You are a helpful voice assistant. Respond concisely and naturally to voice messages. Keep responses brief and conversational.',
+        const result = todoAgent.stream({
           messages: conversationHistory,
         });
 

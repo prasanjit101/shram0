@@ -6,11 +6,11 @@ import { float32Array } from './custom';
 export const VECTOR_DIMENSIONS = 768;
 
 export const tasks = sqliteTable('tasks', {
-    id: text('id').primaryKey().$defaultFn(() => createId()),
+    id: integer('id').primaryKey({ autoIncrement: true }),
     title: text('title').notNull(),
     titleEmbedding: float32Array("title_embedding", { dimensions: VECTOR_DIMENSIONS }),
     scheduledTime: text('scheduled_time'), // ISO 8601 datetime string
-    priorityIndex: integer('priority_index').default(0),
+    completed: integer('completed').default(0), // 0 = false, 1 = true
     createdAt: text('created_at')
         .notNull()
         .default(sql`CURRENT_TIMESTAMP`),

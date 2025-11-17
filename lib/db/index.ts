@@ -21,6 +21,5 @@ export const db = drizzle(client, { schema });
 
 await db.run(sql`
   CREATE INDEX IF NOT EXISTS vector_index
-  ON tasks(title_embedding)
-  USING vector_cosine(768)
+  ON tasks(libsql_vector_idx(title_embedding))
 `);
