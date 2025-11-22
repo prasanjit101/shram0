@@ -21,9 +21,9 @@ export const tasksRouter = router({
           completed: tasks.completed,
           createdAt: tasks.createdAt,
           updatedAt: tasks.updatedAt,
-        }).from(tasks).where(
-          sql`vector_top_k('vector_index', vector32(${JSON.stringify(queryVector)}), 10)`,
-        );
+        }).from(tasks)
+          .orderBy(sql`vector_distance_cos(${tasks.titleEmbedding}, vector32(${JSON.stringify(queryVector)}))`)
+          .limit(10);
 
         return topK;
       }
