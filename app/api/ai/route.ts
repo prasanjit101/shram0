@@ -7,9 +7,10 @@ import { groq } from '@ai-sdk/groq';
 import { taskTools } from '@/server/ai/tools';
 import { todoSystemPrompt } from '@/server/ai/prompt';
 import { TaskClient } from '@/lib/db/schema';
+import { executeHITLtools, trimConversationHistory } from '@/server/ai/utils';
 
 type RequestBody = {
-  audioBase64: string;
+  audioBase64?: string;
   messages?: UIMessage[];
   tasks?: TaskClient[];
 };
@@ -18,45 +19,39 @@ export async function POST(request: Request) {
   try {
 
     const body = await request.json() as RequestBody;
-    const { audioBase64, messages, tasks } = body;
-
-    if (!audioBase64) {
-      return NextResponse.json(
-        { error: "No audio data provided" },
-        { status: 400 }
-      );
-    }
+    const { audioBase64, messages = [], tasks } = body;
 
     // create a custom UI message stream
     const stream = createUIMessageStream<ResponseUIMessage>({
       execute: async ({ writer }) => {
 
-        // Convert base64 to buffer
-        const audioBuffer = Buffer.from(audioBase64, 'base64');
+        if (audioBase64) {
+          // Convert base64 to buffer
+          const audioBuffer = Buffer.from(audioBase64, 'base64');
 
-        // Transcribe the audio
-        const { text: transcript } = await transcribe({
-          model: groq.transcription('whisper-large-v3-turbo'),
-          audio: audioBuffer,
-          providerOptions: { groq: { language: 'en', prompt: 'Transcribe english audio to text accurately.' } },
-        });
+          // Transcribe the audio
+          const { text: transcript } = await transcribe({
+            model: groq.transcription('whisper-large-v3-turbo'),
+            audio: audioBuffer,
+            providerOptions: { groq: { language: 'en', prompt: 'Transcribe english audio to text accurately.' } },
+          });
 
-        writer.write({
-          type: 'data-customMessage',
-          data: {
-            role: 'user',
-            text: transcript,
-          },
-          transient: true,
-        })
+          writer.write({
+            type: 'data-customMessage',
+            data: {
+              role: 'user',
+              text: transcript,
+            },
+            transient: true,
+          })
 
-        const conversationHistory = convertToModelMessages([
-          // pick only last 1 message from the history, for better results summarizing or compressing the context would be more helpful.
-          ...(messages || []).slice(-1),
-          {
-            role: 'user',
-            parts: [{ type: 'text', text: transcript }]
-          }]);
+          if (transcript) {
+            messages.push({ id: crypto.randomUUID(), role: 'user', parts: [{ type: 'text', text: transcript }] });
+          }
+        }
+
+        const conversationHistory = trimConversationHistory(convertToModelMessages(messages));
+        executeHITLtools(writer, messages);
 
         const todoAgent = new Agent({
           model: groq('openai/gpt-oss-120b'),
